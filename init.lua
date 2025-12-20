@@ -1,5 +1,7 @@
 local mod_storage = minetest.get_mod_storage()
 local S = minetest.get_translator("toolranks")
+-- Not translated but parsed by the translation update script
+local NS = function(s) return s end
 
 toolranks = {}
 
@@ -18,21 +20,21 @@ local level_multiplier = 1 / max_level
 
 function toolranks.get_tool_type(description)
   if not description then
-    return "tool"
+    return NS("tool")
   else
     local d = string.lower(description)
     if string.find(d, "pickaxe") then
-      return "pickaxe"
+      return NS("pickaxe")
     elseif string.find(d, "axe") then
-      return "axe"
+      return NS("axe")
     elseif string.find(d, "shovel") then
-      return "shovel"
+      return NS("shovel")
     elseif string.find(d, "hoe") then
-      return "hoe"
+      return NS("hoe")
     elseif string.find(d, "sword") then
-      return "sword"
+      return NS("sword")
     else
-      return "tool"
+      return NS("tool")
     end
   end
 end
@@ -48,14 +50,16 @@ function toolranks.create_description(name, uses)
   local description = name
   local tooltype = toolranks.get_tool_type(description)
   local newdesc = S(
-    "@1@2\n@3Level @4 @5\n@6@Node dug: @7",
+    "@1@2\n@3Level @4 @5\n@6Node dug: @7",
     toolranks.colors.green,
     description,
+    -- newline
     toolranks.colors.gold,
     toolranks.get_level(uses),
     S(tooltype),
+    -- newline
     toolranks.colors.grey,
-    (type(uses) == "number" and uses or 0)
+    (type(uses) == "number" and uses or 0) -- dug count
   )
   return newdesc
 end
