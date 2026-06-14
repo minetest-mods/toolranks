@@ -1,21 +1,21 @@
-local mod_storage = minetest.get_mod_storage()
-local S = minetest.get_translator("toolranks")
+local mod_storage = core.get_mod_storage()
+local S = core.get_translator("toolranks")
 -- Not translated but parsed by the translation update script
 local NS = function(s) return s end
 
 toolranks = {}
 
 toolranks.colors = {
-  grey = minetest.get_color_escape_sequence("#9d9d9d"),
-  green = minetest.get_color_escape_sequence("#1eff00"),
-  gold = minetest.get_color_escape_sequence("#ffdf00"),
-  white = minetest.get_color_escape_sequence("#ffffff")
+  grey = core.get_color_escape_sequence("#9d9d9d"),
+  green = core.get_color_escape_sequence("#1eff00"),
+  gold = core.get_color_escape_sequence("#ffdf00"),
+  white = core.get_color_escape_sequence("#ffffff")
 }
 
-local max_speed = tonumber(minetest.settings:get("toolranks_speed_multiplier")) or 2.0
-local max_use = tonumber(minetest.settings:get("toolranks_use_multiplier")) or 2.0
-local max_level = tonumber(minetest.settings:get("toolranks_levels")) or 10
-local level_digs = tonumber(minetest.settings:get("toolranks_level_digs")) or 500
+local max_speed = tonumber(core.settings:get("toolranks_speed_multiplier")) or 2.0
+local max_use = tonumber(core.settings:get("toolranks_use_multiplier")) or 2.0
+local max_level = tonumber(core.settings:get("toolranks_levels")) or 10
+local level_digs = tonumber(core.settings:get("toolranks_level_digs")) or 500
 local level_multiplier = 1 / max_level
 
 function toolranks.get_tool_type(description)
@@ -84,7 +84,7 @@ function toolranks.new_afteruse(itemstack, user, node, digparams)
 
   if dugnodes > most_digs then
     if most_digs_user ~= pname then -- Avoid spam.
-      minetest.chat_send_all(S(
+      core.chat_send_all(S(
         "Most used tool is now a @1@2@3 owned by @4 with @5 uses.",
         toolranks.colors.green,
         itemdesc,
@@ -98,8 +98,8 @@ function toolranks.new_afteruse(itemstack, user, node, digparams)
   end
 
   if itemstack:get_wear() > 60135 then
-    minetest.chat_send_player(user:get_player_name(), S("Your tool is about to break!"))
-    minetest.sound_play("default_tool_breaks", {
+    core.chat_send_player(user:get_player_name(), S("Your tool is about to break!"))
+    core.sound_play("default_tool_breaks", {
       to_player = pname,
       gain = 2.0,
     })
@@ -113,8 +113,8 @@ function toolranks.new_afteruse(itemstack, user, node, digparams)
       itemdesc,
       toolranks.colors.white
     )
-    minetest.chat_send_player(user:get_player_name(), levelup_text)
-    minetest.sound_play("toolranks_levelup", {
+    core.chat_send_player(user:get_player_name(), levelup_text)
+    core.sound_play("toolranks_levelup", {
       to_player = pname,
       gain = 2.0,
     })
@@ -153,14 +153,14 @@ end
 -- Helper function
 function toolranks.add_tool(name)
   local desc = ItemStack(name):get_definition().description
-  minetest.override_item(name, {
+  core.override_item(name, {
     original_description = desc,
     description = toolranks.create_description(desc),
     after_use = toolranks.new_afteruse
   })
 end
 
-if minetest.get_modpath("default") then
+if core.get_modpath("default") then
   -- Sword
   toolranks.add_tool("default:sword_wood")
   toolranks.add_tool("default:sword_stone")
@@ -194,7 +194,7 @@ if minetest.get_modpath("default") then
   toolranks.add_tool("default:shovel_diamond")
 end
 
-if minetest.get_modpath("mcl_tools") then
+if core.get_modpath("mcl_tools") then
   -- Sword
   toolranks.add_tool("mcl_tools:sword_wood")
   toolranks.add_tool("mcl_tools:sword_stone")

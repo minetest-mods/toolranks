@@ -1,8 +1,9 @@
 unused_args = false
 allow_defined_top = true
+max_line_length = 999
 
 globals = {
-    "minetest",
+    "core",
 }
 
 read_globals = {
@@ -11,8 +12,8 @@ read_globals = {
 
     -- Builtin
     "vector", "ItemStack",
-    "dump", "DIR_DELIM", "VoxelArea", "Settings",
+    "dump",
 
     -- MTG
-    "default", "sfinv", "creative",
+    "default"
 }
