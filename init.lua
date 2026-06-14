@@ -79,6 +79,8 @@ function toolranks.create_description(name, uses)
   return newdesc
 end
 
+local have_default_tool_breaks = core.get_modpath("mcl_sounds") or core.get_modpath("default")
+
 function toolranks.new_afteruse(itemstack, user, node, digparams)
   local itemmeta = itemstack:get_meta()
   local itemdef = itemstack:get_definition()
@@ -112,10 +114,12 @@ function toolranks.new_afteruse(itemstack, user, node, digparams)
 
   if itemstack:get_wear() > 60135 then
     core.chat_send_player(user:get_player_name(), S("Your tool is about to break!"))
-    core.sound_play("default_tool_breaks", {
-      to_player = pname,
-      gain = 2.0,
-    })
+    if have_default_tool_breaks then
+      core.sound_play("default_tool_breaks", {
+        to_player = pname,
+        gain = 2.0,
+      })
+    end
   end
 
   local level = toolranks.get_level(dugnodes)
