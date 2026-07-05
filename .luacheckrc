@@ -4,6 +4,7 @@ max_line_length = 110
 
 globals = {
     "core",
+    "toolranks"
 }
 
 read_globals = {
