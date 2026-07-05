@@ -79,62 +79,31 @@ function toolranks.create_description(name, uses)
 	return newdesc
 end
 
-local have_default_tool_breaks = core.get_modpath("mcl_sounds") or core.get_modpath("default")
+local function update_tool_level(player_name, itemstack, dugnodes)
+	assert(not player_name or type(player_name) == "string")
+	assert(itemstack and itemstack.get_stack_max)
+	assert(type(dugnodes) == "number")
 
-function toolranks.new_afteruse(itemstack, user, node, digparams)
-	local itemmeta = itemstack:get_meta()
 	local itemdef = itemstack:get_definition()
 	local itemdesc = itemdef.original_description or ""
-	local dugnodes = tonumber(itemmeta:get_string("dug")) or 0
-	local lastlevel = tonumber(itemmeta:get_string("lastlevel")) or 0
-	local most_digs = mod_storage:get_int("most_digs") or 0
-	local most_digs_user = mod_storage:get_string("most_digs_user") or 0
-	local pname = user:get_player_name()
-	if not pname then return itemstack end -- player nil check
 
-	if digparams.wear > 0 then -- Only count nodes that spend the tool
-		dugnodes = dugnodes + 1
-		itemmeta:set_string("dug", dugnodes)
-	end
+	local itemmeta = itemstack:get_meta()
 
-	if dugnodes > most_digs then
-		if most_digs_user ~= pname then -- Avoid spam.
-			core.chat_send_all(S(
-				"Most used tool is now a @1@2@3 owned by @4 with @5 uses.",
+	local level = toolranks.get_level(dugnodes)
+	if itemmeta:get_int("lastlevel") < level then
+		if player_name then
+			core.chat_send_player(player_name, S(
+				"Your @1@2@3 just leveled up!",
 				toolranks.colors.green,
 				itemdesc,
-				toolranks.colors.white,
-				pname,
-				dugnodes
+				toolranks.colors.white
 			))
-		end
-		mod_storage:set_int("most_digs", dugnodes)
-		mod_storage:set_string("most_digs_user", pname)
-	end
-
-	if itemstack:get_wear() > 60135 then
-		core.chat_send_player(user:get_player_name(), S("Your tool is about to break!"))
-		if have_default_tool_breaks then
-			core.sound_play("default_tool_breaks", {
-				to_player = pname,
+			core.sound_play("toolranks_levelup", {
+				to_player = player_name,
 				gain = 2.0,
 			})
 		end
-	end
 
-	local level = toolranks.get_level(dugnodes)
-	if lastlevel < level then
-		local levelup_text = S(
-			"Your @1@2@3 just leveled up!",
-			toolranks.colors.green,
-			itemdesc,
-			toolranks.colors.white
-		)
-		core.chat_send_player(user:get_player_name(), levelup_text)
-		core.sound_play("toolranks_levelup", {
-			to_player = pname,
-			gain = 2.0,
-		})
 		local caps = table.copy(itemdef.tool_capabilities)
 		-- Make tool better by modifying tool_capabilities (if defined)
 		if itemdef.tool_capabilities then
@@ -153,21 +122,75 @@ function toolranks.new_afteruse(itemstack, user, node, digparams)
 		end
 	end
 
+	itemmeta:set_string("dug", dugnodes)
+	itemmeta:set_string("lastlevel", level)
+	itemmeta:set_string("description", toolranks.create_description(itemdesc, dugnodes))
+	return level
+end
+
+local have_default_tool_breaks = core.get_modpath("mcl_sounds") or core.get_modpath("default")
+
+function toolranks.new_afteruse(itemstack, user, node, digparams)
+	local pname = user:get_player_name()
+	if not pname then return itemstack end -- player nil check
+
+	local itemdef = itemstack:get_definition()
+	local itemdesc = itemdef.original_description or ""
+
+	local itemmeta = itemstack:get_meta()
+	local dugnodes = itemmeta:get_int("dug") + 1
+
+	if digparams.wear <= 0 then
+		-- Only count nodes that spend the tool
+		return itemstack
+	end
+
+	local most_digs      = mod_storage:get_int("most_digs") or 0
+	local most_digs_user = mod_storage:get_string("most_digs_user") or ""
+	if dugnodes > most_digs then
+		if most_digs_user ~= pname then -- Avoid spam.
+			core.chat_send_all(S(
+				"Most used tool is now a @1@2@3 owned by @4 with @5 uses.",
+				toolranks.colors.green,
+				itemdesc,
+				toolranks.colors.white,
+				pname,
+				dugnodes
+			))
+		end
+		mod_storage:set_int("most_digs", dugnodes)
+		mod_storage:set_string("most_digs_user", pname)
+	end
+
+	if itemstack:get_wear() > 60135 then
+		core.chat_send_player(pname, S("Your tool is about to break!"))
+		if have_default_tool_breaks then
+			core.sound_play("default_tool_breaks", {
+				to_player = pname,
+				gain = 2.0,
+			})
+		end
+	end
+
+	local level = update_tool_level(pname, itemstack, dugnodes)
+
 	-- Old method for compatibility with tools without tool_capabilities defined
 	local wear = digparams.wear
 	if level > 0 and not itemdef.tool_capabilities then
 		local _, use_multiplier = get_multipliers(level)
 		wear = wear / use_multiplier
 	end
-
-	itemmeta:set_string("lastlevel", level)
-	itemmeta:set_string("description", toolranks.create_description(itemdesc, dugnodes))
 	itemstack:add_wear(wear)
+
 	return itemstack
 end
 
+local registered_tools = {
+	-- key: tool name
+	-- value: `true`
+}
+
 -- Helper function
-local count = 0
 function toolranks.add_tool(name)
 	local desc = ItemStack(name):get_definition().description
 	core.override_item(name, {
@@ -175,11 +198,52 @@ function toolranks.add_tool(name)
 		description = toolranks.create_description(desc),
 		after_use = toolranks.new_afteruse
 	})
-	count = count + 1
+	registered_tools[name] = true
 end
 
 dofile(core.get_modpath("toolranks") .. "/register.lua")
 
 core.register_on_mods_loaded(function()
+	local count = 0
+	for _ in pairs(registered_tools) do
+		count = count + 1
+	end
 	core.log("action", "toolranks: Registered " .. count .." tools")
+end)
+
+-- The engine does not know which craft input (tool) to repair.
+-- Ensure that the craft output is the higher levelled tool.
+local function craft_toolrepair(itemstack, craft_grid)
+	local output_name = itemstack:get_name()
+	if not registered_tools[output_name] then
+		return
+	end
+
+	local dugnodes_max = 0
+	local inputs_count = 0
+	for _, stack in ipairs(craft_grid) do
+		if not stack:is_empty() then
+			if stack:get_name() ~= output_name then
+				return -- Wrong recipe? Ignore.
+			end
+
+			local itemmeta = stack:get_meta()
+			dugnodes_max = math.max(dugnodes_max, itemmeta:get_int("dug"))
+			inputs_count = inputs_count + 1
+		end
+	end
+
+	if inputs_count ~= 2 then
+		return -- Wrong recipe? Ignore.
+	end
+
+	update_tool_level(nil, itemstack, dugnodes_max)
+end
+
+core.register_craft_predict(function(itemstack, _, craft_grid, _)
+	craft_toolrepair(itemstack, craft_grid)
+end)
+
+core.register_on_craft(function(itemstack, _, old_craft_grid, _)
+	craft_toolrepair(itemstack, old_craft_grid)
 end)
