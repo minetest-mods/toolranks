@@ -129,6 +129,7 @@ local function update_tool_level(player_name, itemstack, dugnodes)
 end
 
 local have_default_tool_breaks = core.get_modpath("mcl_sounds") or core.get_modpath("default")
+local players_warned = {}
 
 function toolranks.new_afteruse(itemstack, user, node, digparams)
 	local pname = user:get_player_name()
@@ -163,7 +164,12 @@ function toolranks.new_afteruse(itemstack, user, node, digparams)
 	end
 
 	if itemstack:get_wear() > 60135 then
-		core.chat_send_player(pname, S("Your tool is about to break!"))
+		local tname = pname .. " " .. itemstack:get_name()
+		if not players_warned[tname] then
+			players_warned[tname] = true
+			core.chat_send_player(pname, S("Your tool is about to break!"))
+			core.after(8, function() players_warned[tname] = nil end)
+		end
 		if have_default_tool_breaks then
 			core.sound_play("default_tool_breaks", {
 				to_player = pname,
